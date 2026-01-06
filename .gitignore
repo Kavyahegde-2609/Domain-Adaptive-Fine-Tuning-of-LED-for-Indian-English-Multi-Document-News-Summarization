@@ -1,19 +1,17 @@
-# Data files (too large)
-data/
-*.csv
-
 # Virtual environment
 venv/
 
 # Python cache
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/
+# Data - only ignore RAW data, not processed
+data/raw/
+*.csv
+
+# Large model files
+results/*/predictions.json
