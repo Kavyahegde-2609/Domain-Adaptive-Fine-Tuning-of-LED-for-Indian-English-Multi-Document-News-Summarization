@@ -9,9 +9,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Data - only ignore RAW data, not processed
+# Data - ignore raw data and FULL datasets (too large for GitHub)
 data/raw/
-*.csv
+data/processed/*_full.csv
 
-# Large model files
-results/*/predictions.json
+# Keep small datasets for testing
+!data/processed/*_small.csv
