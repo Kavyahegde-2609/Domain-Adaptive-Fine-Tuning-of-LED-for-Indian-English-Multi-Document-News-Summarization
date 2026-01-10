@@ -1,7 +1,6 @@
 ================================================================================
 BASELINE EVALUATION - SUCCESS REPORT (7 Models)
 ================================================================================
-Author: Kavya Mahabaleshwara Hegde
 Date: January 11, 2025
 Status: 7/10 Models Successfully Completed (70%)
 Dataset: NewsSumm (200 test samples)
@@ -22,7 +21,7 @@ PENDING RE-EVALUATION: 3 models (mT5-Base, PEGASUS-XSum, LED-ArXiv)
 DETAILED RESULTS - RANKED BY ROUGE-2
 ================================================================================
 
-RANK 1: BART-Base ⭐ BEST MODEL
+RANK 1: BART-Base  
    ROUGE-1: 46.16%  |  ROUGE-2: 21.67%  |  ROUGE-L: 29.92%
    Success: 200/200 (100%)  |  Time: 4.40 hours
 
