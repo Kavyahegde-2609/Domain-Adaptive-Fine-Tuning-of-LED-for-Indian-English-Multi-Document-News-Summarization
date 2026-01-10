@@ -1,0 +1,128 @@
+================================================================================
+BASELINE EVALUATION - SUCCESS REPORT (7 Models)
+================================================================================
+Author: Kavya Mahabaleshwara Hegde
+Date: January 11, 2025
+Status: 7/10 Models Successfully Completed (70%)
+Dataset: NewsSumm (200 test samples)
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Successfully evaluated 7 transformer models with 100% sample coverage.
+All 7 models completed 200/200 samples without failures.
+
+BEST MODEL: BART-Base (21.67% ROUGE-2)
+READY FOR: Factuality module application
+
+PENDING RE-EVALUATION: 3 models (mT5-Base, PEGASUS-XSum, LED-ArXiv)
+
+================================================================================
+DETAILED RESULTS - RANKED BY ROUGE-2
+================================================================================
+
+RANK 1: BART-Base ⭐ BEST MODEL
+   ROUGE-1: 46.16%  |  ROUGE-2: 21.67%  |  ROUGE-L: 29.92%
+   Success: 200/200 (100%)  |  Time: 4.40 hours
+
+RANK 2: BART-Large-CNN
+   ROUGE-1: 41.02%  |  ROUGE-2: 21.54%  |  ROUGE-L: 30.83%
+   Success: 200/200 (100%)  |  Time: 2.66 hours
+
+RANK 3: DistilBART
+   ROUGE-1: 42.05%  |  ROUGE-2: 21.31%  |  ROUGE-L: 30.32%
+   Success: 200/200 (100%)  |  Time: 0.85 hours (FASTEST)
+
+RANK 4: T5-Large
+   ROUGE-1: 40.26%  |  ROUGE-2: 18.95%  |  ROUGE-L: 28.45%
+   Success: 200/200 (100%)  |  Time: 12.08 hours
+
+RANK 5: PEGASUS-CNN
+   ROUGE-1: 37.48%  |  ROUGE-2: 17.72%  |  ROUGE-L: 26.81%
+   Success: 200/200 (100%)  |  Time: 6.08 hours
+
+RANK 6: T5-Base
+   ROUGE-1: 38.11%  |  ROUGE-2: 17.39%  |  ROUGE-L: 27.08%
+   Success: 200/200 (100%)  |  Time: 0.98 hours
+
+RANK 7: LongT5-Base
+   ROUGE-1: 34.39%  |  ROUGE-2: 14.43%  |  ROUGE-L: 22.79%
+   Success: 200/200 (100%)  |  Time: 1.57 hours
+
+================================================================================
+KEY RESEARCH FINDINGS
+================================================================================
+
+FINDING 1: Domain Shift Validated
+   - BART-Large-CNN: 24.1% (CNN/DM) → 21.54% (Indian) = -10.6% drop
+   - PEGASUS-CNN: 21.47% (CNN/DM) → 17.72% (Indian) = -17.5% drop
+   - T5-Large: ~21% (CNN/DM) → 18.95% (Indian) = -9.8% drop
+
+FINDING 2: BART-Base > BART-Large (Novel)
+   Smaller model (Base) outperforms larger variant (Large) on Indian news.
+   BART-Base: 21.67% vs BART-Large: 21.54% ROUGE-2
+
+FINDING 3: Efficiency Trade-off
+   DistilBART achieves 21.31% ROUGE-2 in only 0.85 hours (best balance).
+
+================================================================================
+MODELS PENDING RE-EVALUATION (3/10)
+================================================================================
+
+TO BE RE-RUN:
+
+1. mT5-Base
+   Previous Result: 4.38% ROUGE-2 (suspiciously low)
+   Reason for Re-run: Verify if multilingual model truly underperforms
+   Expected Time: 1 hour
+
+2. PEGASUS-XSum
+   Previous Result: 13.39% ROUGE-2 (61.5% success rate)
+   Reason for Re-run: Network interruption during model download
+   Expected Time: 2-3 hours with stable connection
+
+3. LED-ArXiv
+   Previous Result: 18.07% ROUGE-2 (46.5% success rate)
+   Reason for Re-run: Attention window optimization incompatibility
+   Expected Time: 1-2 hours after code fix
+
+TOTAL RE-RUN TIME: 4-6 hours
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+PHASE 1: Re-run 3 Failed Models (4-6 hours)
+   - Connect to stable network
+   - Fix LED code (remove attention window optimization)
+   - Re-evaluate: mT5-Base, PEGASUS-XSum, LED-ArXiv
+   - Aim for 10/10 models at 100% success
+
+PHASE 2: Select Best Model for Enhancement
+   Option A: BART-Base (21.67% - highest ROUGE)
+   Option B: LED-ArXiv (after fix - multi-document capable)
+
+PHASE 3: Apply Factuality Module
+   - Three-dimensional verification (entity, temporal, semantic)
+   - Compare baseline vs factuality-enhanced
+
+PHASE 4: Write Paper
+   - Results section with complete 10-model comparison
+   - Novel findings documented
+   - Journal submission preparation
+
+================================================================================
+COMPUTATIONAL STATISTICS (7 Models)
+================================================================================
+
+Total Evaluation Time: ~27 hours
+Average per Model: 3.86 hours
+Fastest Model: DistilBART (0.85 hours)
+Slowest Model: T5-Large (12.08 hours)
+Total Samples Processed: 1,400 (7 models × 200 samples)
+Success Rate: 100% (for all 7 models)
+
+================================================================================
+END OF REPORT
+================================================================================

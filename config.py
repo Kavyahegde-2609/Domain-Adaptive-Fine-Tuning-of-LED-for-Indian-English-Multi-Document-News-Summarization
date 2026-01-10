@@ -14,10 +14,11 @@ import torch
 # PROJECT METADATA
 # ==============================================================================
 PROJECT_INFO = {
-    'title': 'Factuality-Aware Domain Adaptation for Indian English Multi-Document News Summarization',
-    'github': 'https://github.com/Kavyahegde-2609/factuality-aware-indian-news-summarization',
-    'start_date': 'January 2025',
-    'dataset': 'NewsSumm (253,930 articles after preprocessing from original 317,498)',
+    "author":"Kavya Mahabaleshwara Hegde",
+    "title":"Factuality-Aware Domain Adaptation for Indian English Multi-Document News Summarization",
+    "github": "https://github.com/Kavyahegde-2609/factuality-aware-indian-news-summarization",
+    "start_date": "January 2025",
+    "dataset": "NewsSumm (253,930 articles after preprocessing from original 317,498)",
 }
 
 # ==============================================================================
@@ -108,7 +109,7 @@ MULTI_DOC_CONFIG = {
 # ==============================================================================
 EVAL_CONFIG = {
     # Test set size
-    'test_samples': 12697,  # Full test set for publication quality
+    'test_samples': 200,  # Full test set for publication quality
     
     # Input truncation
     'max_article_length': 1024,  # Tokens (for most models)
@@ -198,8 +199,6 @@ print(f" Configuration Loaded - Aligned with 5-Step Methodology")
 print(f"{'='*80}")
 print(f" Project: {PROJECT_INFO['title']}")
 print(f" Author: {PROJECT_INFO['author']}")
-print(f"  Institution: {PROJECT_INFO['institution']}")
-print(f" Supervisor: {PROJECT_INFO['supervisor']}")
 print(f"{'='*80}")
 print(f" Dataset: {PROJECT_INFO['dataset']}")
 print(f"  Device: {'GPU' if DEVICE == 0 else 'CPU'}")

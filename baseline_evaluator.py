@@ -1,34 +1,10 @@
 """
-Baseline Model Evaluation on NewsSumm Dataset
-=============================================
-Author: Kavya Hegde
-Date: January 2025
-
-METHODOLOGY ALIGNMENT:
----------------------
-This script implements Steps 1-3 and partial Step 5 of the research methodology:
-
-STEP 1: Dataset Selection
-   Source domain: Models pretrained on CNN/DailyMail, BBC News, XSum
-   Target domain: NewsSumm (Indian English)
-
-STEP 2: Baseline Model Selection
-   Primary: LED (Longformer Encoder-Decoder)
-   Alternative: Long-T5  
-   Comparison: BART, PEGASUS, T5 variants
-   All models: Pretrained checkpoints, NO fine-tuning
-
-STEP 3: Multi-Document Summary Generation
-   Articles concatenated with separators
-   Long-context input to transformer
-   Abstractive summary generation
-
-STEP 5: Evaluation (Partial - ROUGE only here)
-  ROUGE-1, ROUGE-2, ROUGE-L
-  (BERTScore and QAGS added in separate evaluation scripts)
+Resume-Capable Baseline Evaluation with LED Optimization
+========================================================
+Can resume from saved checkpoints without losing progress
 """
 
-from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, LEDTokenizer, LEDForConditionalGeneration
 import pandas as pd
 from tqdm import tqdm
 from rouge_score import rouge_scorer
@@ -37,6 +13,7 @@ import json
 from pathlib import Path
 import time
 from datetime import datetime
+import torch
 
 from config import (
     BASELINE_MODELS,
@@ -44,15 +21,12 @@ from config import (
     RESULT_PATHS,
     EVAL_CONFIG,
     MULTI_DOC_CONFIG,
-    PROJECT_INFO,
-    DEVICE
+    PROJECT_INFO
 )
 
 
-class NewsSummBaselineEvaluator:
-    """
-    Evaluates baseline models following research methodology Steps 1-3
-    """
+class ResumableEvaluator:
+    """Evaluator that can save progress and resume from checkpoints"""
     
     def __init__(self):
         self.output_dir = RESULT_PATHS['baselines']
@@ -63,15 +37,51 @@ class NewsSummBaselineEvaluator:
             use_stemmer=EVAL_CONFIG['use_stemmer']
         )
         
-        self.device = DEVICE
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+            print(f"✓ Using GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            self.device = torch.device("cpu")
+            print(f"✓ Using CPU")
         
         print(f"\n{'='*80}")
-        print(f"BASELINE EVALUATION - Following Research Methodology")
-        print(f"{'='*80}")
-        print(f" {PROJECT_INFO['author']} | {PROJECT_INFO['institution']}")
-        print(f"  Device: {'GPU' if self.device == 0 else 'CPU'}")
-        print(f" Dataset: NewsSumm (Indian English)")
+        print(f"RESUMABLE BASELINE EVALUATION - OPTIMIZED")
         print(f"{'='*80}\n")
+    
+    def get_checkpoint_path(self, model_name):
+        """Get checkpoint file path for a model"""
+        safe_name = model_name.lower().replace('/', '_').replace('-', '_')
+        model_dir = self.output_dir / safe_name
+        model_dir.mkdir(parents=True, exist_ok=True)
+        return model_dir / 'checkpoint.json'
+    
+    def load_checkpoint(self, model_name):
+        """Load checkpoint if exists"""
+        checkpoint_path = self.get_checkpoint_path(model_name)
+        if checkpoint_path.exists():
+            with open(checkpoint_path, 'r') as f:
+                checkpoint = json.load(f)
+            print(f"✓ Found checkpoint: {checkpoint['completed_samples']} samples completed")
+            return checkpoint
+        return None
+    
+    def save_checkpoint(self, model_name, results, completed_idx):
+        """Save progress checkpoint"""
+        checkpoint_path = self.get_checkpoint_path(model_name)
+        checkpoint = {
+            'model_name': model_name,
+            'completed_samples': completed_idx + 1,
+            'results': results,
+            'timestamp': datetime.now().isoformat()
+        }
+        with open(checkpoint_path, 'w') as f:
+            json.dump(checkpoint, f, indent=2)
+    
+    def get_optimal_padding_length(self, length, attention_window=512):
+        """Calculate optimal padding for LED"""
+        if length <= attention_window:
+            return attention_window
+        return ((length // attention_window) + 1) * attention_window
     
     def load_test_data(self):
         """Load test dataset"""
@@ -82,156 +92,190 @@ class NewsSummBaselineEvaluator:
         if len(df) > max_samples:
             df = df.head(max_samples)
         
-        print(f"📁 Test file: {test_file.name}")
-        print(f"📊 Samples: {len(df):,}\n")
+        print(f"✓ Test file: {test_file.name}")
+        print(f"✓ Samples: {len(df):,}\n")
         
         return df
     
     def prepare_input_multidoc(self, articles_list, model_id):
-        """
-        STEP 3 IMPLEMENTATION: Multi-Document Concatenation
-        
-        Methodology: "Multiple related articles will be grouped together 
-        at the event level, concatenated to form a long-context input"
-        
-        Args:
-            articles_list: List of related articles (or single article)
-            model_id: Model identifier
-        
-        Returns:
-            Concatenated input string
-        """
-        
-        # Handle single article (backward compatible)
+        """Multi-document concatenation"""
         if isinstance(articles_list, str):
             articles_list = [articles_list]
         
-        # Limit number of articles
         max_articles = MULTI_DOC_CONFIG['max_articles_per_event']
         if len(articles_list) > max_articles:
             articles_list = articles_list[:max_articles]
         
-        # Concatenate with separators
         separator = MULTI_DOC_CONFIG['doc_separator']
         concatenated = separator.join([str(art) for art in articles_list if pd.notna(art)])
         
-        # T5 models need prefix
         if 't5' in model_id.lower():
             concatenated = f"summarize: {concatenated}"
         
-        # Truncate if needed
-        # Use longer limit for LED/Long-T5
-        if 'led' in model_id.lower() or 'long-t5' in model_id.lower():
-            max_len = EVAL_CONFIG['max_article_length_led']
-        else:
-            max_len = EVAL_CONFIG['max_article_length']
-        
-        words = concatenated.split()
-        if len(words) > max_len:
-            concatenated = ' '.join(words[:max_len])
-        
         return concatenated
     
-    def prepare_input(self, article, model_id):
-        """Single-document wrapper"""
-        return self.prepare_input_multidoc([article], model_id)
-    
-    def evaluate_single_model(self, model_name, model_id, test_df):
-        """
-        Evaluate one baseline model
+    def load_model_optimized(self, model_id):
+        """Load model with LED optimization"""
+        is_led = 'led' in model_id.lower()
         
-        METHODOLOGY ALIGNMENT:
-        - Step 2: Use pretrained checkpoint (no fine-tuning)
-        - Step 3: Generate abstractive summaries
-        - Step 5: Calculate ROUGE scores
-        """
+        print(f"✓ Loading: {model_id}")
+        
+        if is_led:
+            tokenizer = LEDTokenizer.from_pretrained(model_id)
+            model = LEDForConditionalGeneration.from_pretrained(model_id)
+            
+            # CRITICAL FIX: Reduce attention window
+            original_window = model.config.attention_window[0] if isinstance(model.config.attention_window, list) else model.config.attention_window
+            model.config.attention_window = [512] * len(model.config.attention_window) if isinstance(model.config.attention_window, list) else 512
+            
+            print(f"  ✓ LED attention window optimized: {original_window} → 512")
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(model_id)
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
+        
+        model = model.to(self.device)
+        model.eval()
+        
+        print(f"✓ Model loaded on {self.device}\n")
+        
+        return model, tokenizer, is_led
+    
+    def generate_summary_optimized(self, model, tokenizer, article, is_long_context=False):
+        """Generate summary with optimization"""
+        max_input_length = 16384 if is_long_context else 1024
+        
+        inputs = tokenizer(
+            article,
+            max_length=max_input_length,
+            truncation=True,
+            padding=False,
+            return_tensors="pt"
+        )
+        
+        actual_length = inputs['input_ids'].shape[1]
+        
+        if is_long_context and 'led' in tokenizer.__class__.__name__.lower():
+            optimal_length = self.get_optimal_padding_length(actual_length, attention_window=512)
+            
+            if actual_length < optimal_length:
+                pad_length = optimal_length - actual_length
+                inputs['input_ids'] = torch.nn.functional.pad(
+                    inputs['input_ids'], (0, pad_length), value=tokenizer.pad_token_id
+                )
+                inputs['attention_mask'] = torch.nn.functional.pad(
+                    inputs['attention_mask'], (0, pad_length), value=0
+                )
+        
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_length=EVAL_CONFIG['max_summary_length'],
+                min_length=EVAL_CONFIG['min_summary_length'],
+                num_beams=EVAL_CONFIG['num_beams'],
+                length_penalty=2.0,
+                no_repeat_ngram_size=3,
+                early_stopping=EVAL_CONFIG['early_stopping']
+            )
+        
+        summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return summary, actual_length, inputs['input_ids'].shape[1]
+    
+    def evaluate_single_model(self, model_name, model_id, test_df, resume=True):
+        """Evaluate one model with resume capability"""
         
         print(f"\n{'='*80}")
         print(f"Evaluating: {model_name}")
         print(f"Model ID: {model_id}")
         print(f"{'='*80}")
         
+        checkpoint = None
+        start_idx = 0
+        results = []
+        
+        if resume:
+            checkpoint = self.load_checkpoint(model_name)
+            if checkpoint:
+                results = checkpoint['results']
+                start_idx = checkpoint['completed_samples']
+                print(f"✓ Resuming from sample {start_idx}")
+                
+                if start_idx >= len(test_df):
+                    print(f"✓ Already completed!")
+                    return self.load_final_results(model_name)
+        
         start_time = time.time()
         
-        # Load pretrained model (Step 2: No fine-tuning)
         try:
-            print(f" Loading pretrained checkpoint...")
-            
-            if 'led' in model_id.lower() or 'long-t5' in model_id.lower():
-                tokenizer = AutoTokenizer.from_pretrained(model_id)
-                model = AutoModelForSeq2SeqLM.from_pretrained(model_id)
-                summarizer = pipeline(
-                    "summarization",
-                    model=model,
-                    tokenizer=tokenizer,
-                    device=self.device
-                )
-            else:
-                summarizer = pipeline(
-                    "summarization",
-                    model=model_id,
-                    device=self.device
-                )
-            
-            print(f" Model loaded\n")
-            
+            model, tokenizer, is_long_context = self.load_model_optimized(model_id)
         except Exception as e:
-            print(f" Failed: {e}")
+            print(f"✗ Failed to load model: {e}")
             return None
         
-        # Evaluate
-        results = []
         rouge1_scores, rouge2_scores, rougeL_scores = [], [], []
         failed = []
         
-        print(f" Generating summaries ({len(test_df):,} samples)...")
+        total_input_length = sum(r.get('input_length', 0) for r in results)
+        total_padded_length = sum(r.get('padded_length', 0) for r in results)
         
-        for idx, row in tqdm(test_df.iterrows(), total=len(test_df), desc=model_name):
+        print(f"✓ Generating summaries ({start_idx}/{len(test_df)} → {len(test_df)})...")
+        
+        for idx in tqdm(range(start_idx, len(test_df)), desc=model_name, initial=start_idx, total=len(test_df)):
             try:
-                # Step 3: Prepare (multi-doc) input
-                article = self.prepare_input(row['article'], model_id)
+                row = test_df.iloc[idx]
+                article = self.prepare_input_multidoc([row['article']], model_id)
                 reference = str(row['summary'])
                 
                 if not article or not reference:
                     failed.append(idx)
                     continue
                 
-                # Step 3: Generate abstractive summary
-                output = summarizer(
-                    article,
-                    max_length=EVAL_CONFIG['max_summary_length'],
-                    min_length=EVAL_CONFIG['min_summary_length'],
-                    num_beams=EVAL_CONFIG['num_beams'],
-                    do_sample=EVAL_CONFIG['do_sample'],
-                    early_stopping=EVAL_CONFIG['early_stopping']
+                generated, input_len, padded_len = self.generate_summary_optimized(
+                    model, tokenizer, article, is_long_context
                 )
                 
-                generated = output[0]['summary_text']
+                total_input_length += input_len
+                total_padded_length += padded_len
                 
-                # Step 5: Calculate ROUGE
                 scores = self.rouge_scorer.score(reference, generated)
                 rouge1_scores.append(scores['rouge1'].fmeasure)
                 rouge2_scores.append(scores['rouge2'].fmeasure)
                 rougeL_scores.append(scores['rougeL'].fmeasure)
                 
-                results.append({
+                result = {
                     'sample_id': int(idx),
                     'article_preview': article[:200] + '...',
                     'reference_summary': reference,
                     'generated_summary': generated,
+                    'input_length': input_len,
+                    'padded_length': padded_len,
                     'rouge1': round(scores['rouge1'].fmeasure, 4),
                     'rouge2': round(scores['rouge2'].fmeasure, 4),
                     'rougeL': round(scores['rougeL'].fmeasure, 4),
-                })
+                }
+                results.append(result)
+                
+                if (idx + 1) % 10 == 0:
+                    self.save_checkpoint(model_name, results, idx)
                 
             except Exception as e:
                 failed.append(idx)
                 if len(failed) <= 5:
-                    print(f"\n Error on {idx}: {str(e)[:100]}")
+                    print(f"\n✗ Error on {idx}: {str(e)[:100]}")
                 continue
         
-        # Calculate aggregates
         elapsed = time.time() - start_time
+        
+        if checkpoint:
+            for r in checkpoint['results']:
+                rouge1_scores.append(r['rouge1'])
+                rouge2_scores.append(r['rouge2'])
+                rougeL_scores.append(r['rougeL'])
+        
+        avg_input_len = total_input_length / len(results) if results else 0
+        avg_padded_len = total_padded_length / len(results) if results else 0
+        padding_overhead = ((avg_padded_len - avg_input_len) / avg_input_len * 100) if avg_input_len > 0 else 0
         
         aggregate = {
             'model_name': model_name,
@@ -241,19 +285,19 @@ class NewsSummBaselineEvaluator:
             'successful_samples': len(results),
             'failed_samples': len(failed),
             'success_rate': round(len(results) / len(test_df) * 100, 2),
-            
             'rouge1_mean': round(np.mean(rouge1_scores) * 100, 2),
             'rouge2_mean': round(np.mean(rouge2_scores) * 100, 2),
             'rougeL_mean': round(np.mean(rougeL_scores) * 100, 2),
             'rouge1_std': round(np.std(rouge1_scores) * 100, 2),
             'rouge2_std': round(np.std(rouge2_scores) * 100, 2),
             'rougeL_std': round(np.std(rougeL_scores) * 100, 2),
-            
             'evaluation_time_seconds': round(elapsed, 2),
-            'time_per_sample': round(elapsed / len(results), 2) if results else 0,
+            'time_per_sample': round(elapsed / (len(results) - start_idx), 2) if (len(results) - start_idx) > 0 else 0,
+            'avg_input_length': round(avg_input_len, 0),
+            'avg_padded_length': round(avg_padded_len, 0),
+            'padding_overhead_percent': round(padding_overhead, 1),
         }
         
-        # Print results
         print(f"\n{'='*80}")
         print(f"RESULTS: {model_name}")
         print(f"{'='*80}")
@@ -262,10 +306,11 @@ class NewsSummBaselineEvaluator:
         print(f"  ROUGE-1: {aggregate['rouge1_mean']:.2f} ± {aggregate['rouge1_std']:.2f}")
         print(f"  ROUGE-2: {aggregate['rouge2_mean']:.2f} ± {aggregate['rouge2_std']:.2f}")
         print(f"  ROUGE-L: {aggregate['rougeL_mean']:.2f} ± {aggregate['rougeL_std']:.2f}")
-        print(f"\nTiming: {elapsed/3600:.2f} hours ({aggregate['time_per_sample']:.2f}s per sample)")
+        print(f"\nEfficiency:")
+        print(f"  Time: {elapsed/3600:.2f} hours ({aggregate['time_per_sample']:.2f}s per sample)")
+        print(f"  Padding overhead: {aggregate['padding_overhead_percent']:.1f}%")
         print(f"{'='*80}\n")
         
-        # Save
         safe_name = model_name.lower().replace('/', '_').replace('-', '_')
         model_dir = self.output_dir / safe_name
         model_dir.mkdir(parents=True, exist_ok=True)
@@ -276,19 +321,32 @@ class NewsSummBaselineEvaluator:
         with open(model_dir / 'detailed_predictions.json', 'w') as f:
             json.dump(results, f, indent=2)
         
-        print(f" Saved to: {model_dir}\n")
+        checkpoint_path = self.get_checkpoint_path(model_name)
+        if checkpoint_path.exists():
+            checkpoint_path.unlink()
+        
+        print(f"✓ Saved to: {model_dir}\n")
+        
+        del model
+        del tokenizer
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         return aggregate
     
-    def run_all_baselines(self):
-        """Evaluate all baseline models"""
+    def load_final_results(self, model_name):
+        """Load final results for completed model"""
+        safe_name = model_name.lower().replace('/', '_').replace('-', '_')
+        model_dir = self.output_dir / safe_name
+        
+        with open(model_dir / 'aggregate_scores.json', 'r') as f:
+            return json.load(f)
+    
+    def run_all_baselines(self, resume=True):
+        """Evaluate all baselines with resume support"""
         
         print(f"\n{'='*80}")
-        print(f"STARTING BASELINE EVALUATION")
-        print(f"{'='*80}")
-        print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Models: {len(BASELINE_MODELS)}")
-        print(f"Samples: {EVAL_CONFIG['test_samples']:,}")
+        print(f"BASELINE EVALUATION (RESUME MODE: {resume})")
         print(f"{'='*80}\n")
         
         test_df = self.load_test_data()
@@ -300,22 +358,20 @@ class NewsSummBaselineEvaluator:
             print(f"\nProgress: {i}/{len(BASELINE_MODELS)}")
             
             try:
-                result = self.evaluate_single_model(model_name, model_id, test_df)
+                result = self.evaluate_single_model(model_name, model_id, test_df, resume=resume)
                 if result:
                     all_results.append(result)
                 else:
                     failed_models.append(model_name)
             except Exception as e:
-                print(f"\n FAILED: {model_name}")
+                print(f"\n✗ FAILED: {model_name}")
                 print(f"Error: {str(e)[:200]}")
                 failed_models.append(model_name)
         
-        # Save summary
         summary = {
             'experiment_metadata': {
                 'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'author': PROJECT_INFO['author'],
-                'institution': PROJECT_INFO['institution'],
                 'num_models_evaluated': len(all_results),
                 'num_models_failed': len(failed_models),
                 'test_samples': EVAL_CONFIG['test_samples'],
@@ -327,49 +383,32 @@ class NewsSummBaselineEvaluator:
         with open(self.output_dir / 'all_baselines_summary.json', 'w') as f:
             json.dump(summary, f, indent=2)
         
-        self.print_comparison(all_results)
-        
-        if failed_models:
-            print(f"\n Failed: {', '.join(failed_models)}")
-        
         return all_results
-    
-    def print_comparison(self, results):
-        """Print comparison table"""
-        
-        print(f"\n{'='*90}")
-        print(f"BASELINE COMPARISON - INDIAN ENGLISH NEWS")
-        print(f"{'='*90}")
-        print(f"{'Model':<30} {'R-1':<14} {'R-2':<14} {'R-L':<14} {'Time(h)':<10}")
-        print(f"{'-'*90}")
-        
-        sorted_results = sorted(results, key=lambda x: x['rouge2_mean'], reverse=True)
-        
-        for r in sorted_results:
-            time_h = r['evaluation_time_seconds'] / 3600
-            print(f"{r['model_name']:<30} "
-                  f"{r['rouge1_mean']:>5.2f}±{r['rouge1_std']:<5.2f} "
-                  f"{r['rouge2_mean']:>5.2f}±{r['rouge2_std']:<5.2f} "
-                  f"{r['rougeL_mean']:>5.2f}±{r['rougeL_std']:<5.2f} "
-                  f"{time_h:>8.2f}")
-        
-        print(f"{'='*90}")
-        
-        best = sorted_results[0]
-        print(f"\n BEST BASELINE: {best['model_name']}")
-        print(f"   ROUGE-2: {best['rouge2_mean']:.2f}%")
-        print(f"   → Will be used as base for Step 4 (Factuality Enhancement)")
-        print(f"{'='*90}\n")
 
 
 def main():
-    evaluator = NewsSummBaselineEvaluator()
-    results = evaluator.run_all_baselines()
+    evaluator = ResumableEvaluator()
     
-    print(f"\n BASELINE EVALUATION COMPLETE!")
-    print(f" Results: {RESULT_PATHS['baselines']}")
-    print(f" Models evaluated: {len(results)}")
-    print(f"\n NEXT: Apply Step 4 (Factuality-Aware Module)")
+    print("\n" + "="*80)
+    print("RESUME OPTIONS:")
+    print("="*80)
+    print("1. Resume from checkpoints (keep existing progress)")
+    print("2. Start fresh (delete all checkpoints)")
+    print("="*80)
+    
+    choice = input("\nEnter choice (1 or 2, default=1): ").strip() or "1"
+    resume = choice == "1"
+    
+    if not resume:
+        confirm = input("⚠ This will delete all progress. Continue? (yes/no): ").strip().lower()
+        if confirm != "yes":
+            print("Aborted.")
+            return
+    
+    results = evaluator.run_all_baselines(resume=resume)
+    
+    print(f"\n✓ BASELINE EVALUATION COMPLETE!")
+    print(f"✓ Models evaluated: {len(results)}")
 
 
 if __name__ == "__main__":
