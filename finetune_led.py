@@ -1,6 +1,6 @@
 """
 Fine-tune LED on NewsSumm
-This creates your NOVEL MODEL: LED-NewsSumm
+This creates  NOVEL MODEL: LED-NewsSumm
 """
 
 from transformers import (
@@ -69,7 +69,7 @@ class NewsSummDataset(Dataset):
 def fine_tune_led():
     """
     Main fine-tuning function
-    YOUR NOVEL CONTRIBUTION
+     NOVEL CONTRIBUTION
     """
     
     print("\n" + "="*80)
