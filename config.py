@@ -2,7 +2,6 @@
 Research Configuration File
 ==========================
 Project: Factuality-Aware Domain Adaptation for Indian English News
-Author: Kavya Hegde
 Date: January 2025
 
 """
