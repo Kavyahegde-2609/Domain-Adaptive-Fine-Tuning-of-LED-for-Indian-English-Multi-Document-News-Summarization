@@ -1,7 +1,8 @@
 """
 Research Configuration File
 ==========================
-Project: Factuality-Aware Domain Adaptation for Indian English News
+Project: Domain-Adaptive Fine-Tuning of LED for Indian English 
+Multi-Document News Summarization
 Date: January 2025
 
 """
