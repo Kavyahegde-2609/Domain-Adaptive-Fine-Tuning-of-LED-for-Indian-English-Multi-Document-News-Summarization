@@ -398,7 +398,7 @@ def main():
     resume = choice == "1"
     
     if not resume:
-        confirm = input("⚠ This will delete all progress. Continue? (yes/no): ").strip().lower()
+        confirm = input(" This will delete all progress. Continue? (yes/no): ").strip().lower()
         if confirm != "yes":
             print("Aborted.")
             return
@@ -406,7 +406,7 @@ def main():
     results = evaluator.run_all_baselines(resume=resume)
     
     print(f"\n BASELINE EVALUATION COMPLETE!")
-    print(f"✓ Models evaluated: {len(results)}")
+    print(f" Models evaluated: {len(results)}")
 
 
 if __name__ == "__main__":
