@@ -70,14 +70,17 @@ A 3-stage progressive framework with dynamic loss weighting:
 git clone https://github.com/Kavyahegde-2609/Multi-Stage-Factuality-Constrained-Training-for-Indian-English-News-Summarization.git
 cd Multi-Stage-Factuality-Constrained-Training-for-Indian-English-News-Summarization
 
+#Install dependencies
 pip install -r requirements.txt
 
 # Phase 1: Baseline evaluation
 cd baseline_investigation
+
 python baseline_evaluator.py
 
 # Phase 2: Multi-stage training
 cd ../novel_multistage
+
 python code/train_multistage.py
 
 ## Key Contributions
