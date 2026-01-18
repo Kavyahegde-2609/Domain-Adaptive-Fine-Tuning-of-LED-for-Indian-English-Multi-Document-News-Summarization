@@ -45,6 +45,7 @@ Evaluation of 10 transformer-based summarization models on the NewsSumm dataset.
 
 - Best baseline: **BART-Large-CNN** (30.83% ROUGE-L)
 - Observed gap: entity preservation (~70%), temporal consistency (~77%)
+  
 
 [Details →](baseline_investigation/README.md)
 
@@ -57,6 +58,7 @@ A 3-stage progressive framework with dynamic loss weighting:
 - **Stage 1:** Warmup (fluency learning)
 - **Stage 2:** Factuality (entity and temporal constraints)
 - **Stage 3:** Refinement (balanced multi-objective optimization)
+ 
 
 [Details →](novel_multistage/README.md)
 
