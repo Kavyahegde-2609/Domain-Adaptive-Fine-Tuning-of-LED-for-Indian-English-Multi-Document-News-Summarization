@@ -71,6 +71,7 @@ git clone https://github.com/Kavyahegde-2609/Multi-Stage-Factuality-Constrained-
 cd Multi-Stage-Factuality-Constrained-Training-for-Indian-English-News-Summarization
 
 #Install dependencies
+
 pip install -r requirements.txt
 
 # Phase 1: Baseline evaluation
@@ -92,12 +93,16 @@ Dynamic Loss Weighting across progressive training stages
 Indian-Specific Factuality Losses (entity, temporal, semantic)
 
 
+
+
 ##Citation
 @misc{hegde2026multistage,
   title={Multi-Stage Factuality-Constrained Training for Indian English News Summarization},
   author={Kavya Mahabaleshwara Hegde},
   year={2026}
 }
+
+
 
 
 **Last Updated:** January 18, 2026
