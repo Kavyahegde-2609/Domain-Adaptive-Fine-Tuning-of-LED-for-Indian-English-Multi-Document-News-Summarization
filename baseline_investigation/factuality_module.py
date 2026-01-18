@@ -3,7 +3,6 @@ Factuality Verification Module
 Author: Kavya Hegde
 Date: January 2025
 
-Novel contribution: Multi-dimensional factuality checking.
 """
 
 import spacy
