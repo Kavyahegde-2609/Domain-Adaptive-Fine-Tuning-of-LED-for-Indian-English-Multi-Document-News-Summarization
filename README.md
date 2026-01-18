@@ -22,12 +22,19 @@ A novel 3-stage training framework with Indian-specific factuality constraints.
 ## Two-Phase Approach
 
  baseline_investigation/ # Phase 1: 10-model evaluation
+ 
  novel_multistage/ # Phase 2: Novel training
+ 
  code/
+ 
    novel_losses.py
+   
    rain_multistage.py
+   
    results/
+   
    data/processed/ # NewsSumm dataset
+   
    README.md
 
 ---
