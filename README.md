@@ -92,17 +92,4 @@ Dynamic Loss Weighting across progressive training stages
 
 Indian-Specific Factuality Losses (entity, temporal, semantic)
 
-
-
-
-##Citation
-@misc{hegde2026multistage,
-  title={Multi-Stage Factuality-Constrained Training for Indian English News Summarization},
-  author={Kavya Mahabaleshwara Hegde},
-  year={2026}
-}
-
-
-
-
 **Last Updated:** January 18, 2026
