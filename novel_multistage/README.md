@@ -99,6 +99,7 @@ Phase 1 revealed that:
 
 ## Code Structure
 novel_multistage/
+code/
  novel_losses.py
  train_multistage.py
  results/
