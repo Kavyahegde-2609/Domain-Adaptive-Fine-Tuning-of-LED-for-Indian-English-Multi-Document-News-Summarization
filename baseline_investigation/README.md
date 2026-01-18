@@ -86,18 +86,23 @@ These limitations directly motivate **Phase 2**.
 ## Code Structure
 
 baseline_investigation/
-├── baseline_evaluator.py
-├── factuality_module.py
-├── finetune_led_basic.py
-├── config.py
-└── results/
+
+ baseline_evaluator.py
+
+ factuality_module.py
+ 
+ finetune_led_basic.py
+ 
+ config.py
+ 
+ results/
 
 ---
 
 ## Reproducibility
 
-```bash
 pip install -r requirements.txt
+
 python baseline_evaluator.py --test_data data/processed/test_full.csv
 
 
